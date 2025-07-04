@@ -1,3 +1,6 @@
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
@@ -181,6 +184,22 @@ Vérifiez l'orthographe ou essayez de chercher avec un mot-clé.`
         });
     }
 }
+
+// Route pour le callback OAuth Google
+app.get('/oauth2callback', async (req, res) => {
+  const {code} = req.query;
+  console.log('Code d\'autorisation reçu:', code);
+  
+  // TODO: Cette partie sera complétée dans la prochaine étape
+  // pour traiter le code et obtenir un token
+  
+  res.send('Authentification réussie! Vous pouvez fermer cette fenêtre.');
+});
+
+// Démarrer le serveur Express
+app.listen(PORT, () => {
+  console.log(`Serveur web démarré sur le port ${PORT}`);
+});
 
 console.log('Démarrage de Jamalek.online.bot...');
 connectToWhatsApp();
