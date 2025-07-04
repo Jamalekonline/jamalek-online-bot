@@ -1,0 +1,67 @@
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+
+async function connectToWhatsApp() {
+    // Créer le dossier auth_info s'il n'existe pas
+    if (!fs.existsSync('./auth_info')) {
+        fs.mkdirSync('./auth_info');
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: false // Désactivé car déprécié
+    });
+    
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        // Afficher le QR code manuellement
+        if (qr) {
+            console.log('QR Code reçu, scannez-le avec WhatsApp sur votre téléphone:');
+            qrcode.generate(qr, { small: true });
+        }
+        
+        if(connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('Connexion fermée à cause de ', lastDisconnect?.error, ', reconnexion: ', shouldReconnect);
+            
+            if(shouldReconnect) {
+                connectToWhatsApp();
+            }
+        } else if(connection === 'open') {
+            console.log('Connexion établie! Jamalek.online.bot est en ligne!');
+            
+            // Afficher l'ID du bot (utile pour plus tard)
+            console.log('Bot ID:', sock.user.id);
+            console.log('Pour ajouter le bot à un groupe, invitez ce numéro dans votre groupe WhatsApp');
+        }
+    });
+    
+    sock.ev.on('creds.update', saveCreds);
+    
+    // Gestionnaire simple de messages pour test
+    sock.ev.on('messages.upsert', async (m) => {
+        const msg = m.messages[0];
+        if (!msg.key.fromMe && m.type === 'notify') {
+            console.log('Message reçu:', msg);
+            const sender = msg.key.remoteJid;
+            const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+            
+            console.log('De:', sender);
+            console.log('Message:', messageText);
+            
+            // Répondre à un message test
+            if (messageText.toLowerCase() === 'test') {
+                await sock.sendMessage(sender, { text: 'Jamalek.online.bot est fonctionnel! 👍' });
+            }
+        }
+    });
+    
+    return sock;
+}
+
+console.log('Démarrage de Jamalek.online.bot...');
+connectToWhatsApp();
