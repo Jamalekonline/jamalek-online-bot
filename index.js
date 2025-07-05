@@ -48,38 +48,57 @@ async function connectToWhatsApp() {
     
     // Gestionnaire de messages amélioré
     sock.ev.on('messages.upsert', async (m) => {
+        console.log('Message upsert reçu - Type:', m.type);
+        
         const msg = m.messages[0];
-        if (!msg.key.fromMe && m.type === 'notify') {
+        if (!msg.key.fromMe) { // Supprimé la vérification du type notify
             const sender = msg.key.remoteJid;
-            const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+            const messageText = msg.message?.conversation || 
+                              msg.message?.extendedTextMessage?.text || 
+                              '';
             
             console.log('Message reçu de', sender, ':', messageText);
             
             // Traitement des commandes
-            if (messageText.toLowerCase() === 'salut' || messageText.toLowerCase() === 'bonjour') {
-                await sock.sendMessage(sender, { 
-                    text: `👋 Bonjour! Je suis le bot officiel de Jamalek Online.
-                    
+            if (messageText.toLowerCase() === 'salut' || 
+                messageText.toLowerCase() === 'bonjour' || 
+                messageText.toLowerCase() === 'hola') { // Ajout de "hola"
+                
+                console.log('Commande de salutation détectée, envoi de la réponse...');
+                
+                try {
+                    await sock.sendMessage(sender, { 
+                        text: `👋 Bonjour! Je suis le bot officiel de Jamalek Online.
+                        
 Comment puis-je vous aider aujourd'hui?
 
 📋 *Commandes disponibles:*
 - *chercher [mot-clé]* : Rechercher des entreprises par mot-clé
 - *info [nom]* : Obtenir des détails sur une entreprise spécifique
 - *aide* : Afficher ce message d'aide
-                    `
-                });
+                        `
+                    });
+                    console.log('Réponse de salutation envoyée avec succès');
+                } catch (error) {
+                    console.error('Erreur lors de l\'envoi de la réponse:', error);
+                }
             }
             else if (messageText.toLowerCase() === 'aide' || messageText.toLowerCase() === 'help') {
-                await sock.sendMessage(sender, { 
-                    text: `📋 *Liste des commandes Jamalek.online.bot:*
-                    
+                try {
+                    await sock.sendMessage(sender, { 
+                        text: `📋 *Liste des commandes Jamalek.online.bot:*
+                        
 *chercher [mot-clé]* : Rechercher des entreprises par mot-clé
 *info [nom]* : Obtenir des détails sur une entreprise spécifique
 *aide* : Afficher cette liste de commandes
 
 Exemple: "chercher restaurant" ou "info Café des Arts"
-                    `
-                });
+                        `
+                    });
+                    console.log('Réponse aide envoyée avec succès');
+                } catch (error) {
+                    console.error('Erreur lors de l\'envoi de l\'aide:', error);
+                }
             }
             else if (messageText.toLowerCase().startsWith('chercher ')) {
                 const keyword = messageText.substring(8).trim();
@@ -90,7 +109,23 @@ Exemple: "chercher restaurant" ou "info Café des Arts"
                 await handleBusinessInfo(sock, sender, businessName);
             }
             else if (messageText.toLowerCase() === 'test') {
-                await sock.sendMessage(sender, { text: 'Jamalek.online.bot est opérationnel! 👍' });
+                try {
+                    await sock.sendMessage(sender, { text: 'Jamalek.online.bot est opérationnel! 👍' });
+                    console.log('Test réponse envoyée avec succès');
+                } catch (error) {
+                    console.error('Erreur lors du test:', error);
+                }
+            }
+            else {
+                // Réponse par défaut pour les messages non reconnus
+                try {
+                    await sock.sendMessage(sender, { 
+                        text: `Bonjour! Je ne comprends pas cette commande. Envoyez *aide* pour voir la liste des commandes disponibles.` 
+                    });
+                    console.log('Réponse par défaut envoyée');
+                } catch (error) {
+                    console.error('Erreur lors de l\'envoi de la réponse par défaut:', error);
+                }
             }
         }
     });
